@@ -5,6 +5,8 @@ import pickle
 from collections import OrderedDict
 from Block import Block
 from Transactions import Transactions
+from HashUtils import HashUtils
+from Verifications import Verifications
 MINING_REWARD = 12.0
 blockchain = []
 open_transactions = []
@@ -24,23 +26,9 @@ def get_user_choice():
 	choice = input("Enter your choice")
 	return choice
 
-def validate_chain():
-	for (index,block) in enumerate(blockchain):
-		if index == 0:
-			continue
-		if blockchain[index].previousBlockHash != hash_block(blockchain[index-1]):
-			return False
-		if not valid_proof(block.transactions[:-1],block.previousBlockHash,block.proof):
-			print("Proof of work failed")
-			return False
-	return True
 
-def verify_transaction(transaction):
-	sender_balance = calculate_balances(transaction.sender)
-	if sender_balance >= transaction.amount:
-		return True
-	else:
-		return False
+
+
 
 def output_blockchain():
 	global blockchain
@@ -61,8 +49,9 @@ def add_transaction(recipient, amount, sender = owner):
 	# "recipient" : recipient,
 	# "amount" : amount
 	# }
+	verification = Verifications()
 	transaction = Transactions(sender,recipient,amount)
-	if verify_transaction(transaction):
+	if verification.verify_transaction(transaction,calculate_balances):
 		open_transactions.append(transaction)
 		participants.add(sender)
 		participants.add(recipient)
@@ -71,22 +60,17 @@ def add_transaction(recipient, amount, sender = owner):
 	else:
 		return False
 
-def hash_block(block):
-	hashable_block = block.__dict__.copy()
-	hashable_block['transactions'] = [txn.__dict__ for txn in hashable_block['transactions']]
-	return hashlib.sha256(json.dumps(hashable_block, sort_keys=True).encode()).hexdigest()
+
 	
-def valid_proof(transactions,previousBlockHash,proof):
-	str_hash = str([txn.to_ordered_dict() for txn in transactions]) + str(previousBlockHash) + str(proof)
-	str_hash = hashlib.sha256(str_hash.encode('utf-8')).hexdigest()
-	
-	return str_hash[0:2]=='00'
+
 
 def proof_of_work():
+	verification = Verifications()
+	hu = HashUtils()
 	last_block = blockchain[-1]
-	last_hash = hash_block(last_block)
+	last_hash = hu.hash_block(last_block)
 	proof =0
-	while not valid_proof(open_transactions,last_hash,proof):
+	while not verification.valid_proof(open_transactions,last_hash,proof):
 		proof = proof + 1
 	return proof
 def print_participants():
@@ -119,8 +103,9 @@ def calculate_balances(participant):
 def mine_block():
 	global blockchain
 	global open_transactions
+	hu = HashUtils()
 	last_block = blockchain[-1]
-	block_hash = hash_block(last_block)
+	block_hash = hu.hash_block(last_block)
 	proof = proof_of_work()
 	# reward_transaction = {
 	# 'sender' : 'MINER',
@@ -134,14 +119,21 @@ def mine_block():
 	
 	print("Adding new block %s"%(block.__dict__))
 	blockchain.append(block)
+	output_blockchain()
 	print("New length of blockchain %s"%(len(blockchain)))
 	
 	return True
 
 def save_data():
+	global blockchain
 	try:
 		with open('blockchain_data.txt','w') as write_file:
-			saveable_chain = [ block.__dict__  for block in [Block(index = block_el.index, previousBlockHash = block_el.previousBlockHash,transactions = [txn.__dict__ for txn in block_el], proof = block_el.proof) for block_el in blockchain]]
+			saveable_chain = [ block.__dict__  for block in [Block(index = block_el.index, previousBlockHash = block_el.previousBlockHash,transactions = [txn.__dict__ for txn in block_el.transactions], proof = block_el.proof) for block_el in blockchain]]
+			# converted_blocks = []
+			# for block_el in blockchain:
+			# 	converted_block = Block(index = block_el.index, previousBlockHash = block_el.previousBlockHash,transactions = [txn.__dict__ for txn in block_el.transactions], proof = block_el.proof)
+			# 	print("converted_block is %s"%(converted_block))
+			# 	converted_blocks.append(converted_block.__dict__)
 			write_file.write(json.dumps(saveable_chain))
 			write_file.write('\n')
 			write_file.write(json.dumps(open_transactions))
@@ -182,6 +174,7 @@ def load_data():
 			blockchain = updated_blockchain
 			open_transactions = updated_transactions
 	except (IOError,AttributeError,IndexError):
+		print("Initialising genesis block")
 		blockchain = []
 		genesis_block = Block(index = 0,previousBlockHash = "",transactions = [],proof = 100)
 		
@@ -203,7 +196,7 @@ while is_user_interaction:
 	print("Please select an appropriate choice")
 	print("1. Add transaction")
 	print("2. View blockchain")
-	# print("3. Corrupt the blockchain")
+	print("3. Verify Transactions")
 	print("4. Validate block chain")
 	print("5. Mine block")
 	print("6. Print participants")
@@ -226,8 +219,14 @@ while is_user_interaction:
 	# 	"index" : 0,
 	# 	"transactions": [{"recipient" : "Manu", "sender": "fsdf87df7dfbfshgh9834", "amount" : 120.0}]
 	# 	}
+	elif user_choice == '3':
+		verification = Verifications()
+		if verification.verify_transactions(open_transactions,calculate_balances):
+			print("All transactions are valid and verified")
+
 	elif user_choice == '4':
-		is_valid_blockchain = validate_chain()
+		verification = Verifications()
+		is_valid_blockchain = verification.validate_chain(blockchain)
 		if is_valid_blockchain is True:
 			print("Block chain is valid")
 		else:
@@ -248,8 +247,8 @@ while is_user_interaction:
 	elif user_choice == 'q':
 		is_user_interaction = False
 		break
-
-	if not validate_chain():
+	verification = Verifications()
+	if not verification.validate_chain(blockchain):
 		print("Invalid block")
 		break
 
