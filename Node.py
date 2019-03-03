@@ -1,31 +1,19 @@
-from Verifications import verification
+from Verifications import Verifications
+from Blockchain import Blockchain
+from uuid import uuid4
 class Node():
 	def __init__(self):
-		self.blockchain = []
-	def add_transaction(self,recipient, amount, sender = owner):
-	# transaction = {
-	# "sender" : sender,
-	# "recipient" : recipient,
-	# "amount" : amount
-	# }
-		verification = Verifications()
-		transaction = Transactions(sender,recipient,amount)
-		if verification.verify_transaction(transaction,calculate_balances):
-			open_transactions.append(transaction)
-			participants.add(sender)
-			participants.add(recipient)
-			save_data()
-			return True
-		else:
-			return False
+		self.id = str(uuid4())
+		self.blockchain = Blockchain(self.id)
+	
 	def get_last_transaction(self):
-		if len(self.blockchain) < 1:
+		if len(self.blockchain.get_chain()) < 1:
 				return None
-		return self.blockchain[-1]
+		return self.blockchain.get_chain()[-1]
 	def output_blockchain(self):
 		
-		print("There are %s blocks"%(len(self.blockchain)))
-		for block in self.blockchain:
+		print("There are %s blocks"%(len(self.blockchain.get_chain())))
+		for block in self.blockchain.get_chain():
 			print("Outputting block")
 			print(block.__dict__)
 
@@ -54,11 +42,11 @@ class Node():
 			user_choice = self.get_user_choice()
 			if user_choice == '1':
 				recipient,amount = self.get_user_transaction()
-				if self.add_transaction(recipient,amount=amount):
+				if self.blockchain.add_transaction(recipient,amount=amount):
 					print("Transaction Successful")
 				else:
 					print("Transaction failed")
-				print(open_transactions)
+				
 			elif user_choice == '2':
 				self.output_blockchain()
 			# elif user_choice == '3':
@@ -68,34 +56,35 @@ class Node():
 			# 	"transactions": [{"recipient" : "Manu", "sender": "fsdf87df7dfbfshgh9834", "amount" : 120.0}]
 			# 	}
 			elif user_choice == '3':
-				verification = Verifications()
-				if verification.verify_transactions(open_transactions,calculate_balances):
+				# verification = Verifications()
+				if Verifications.verify_transactions(self.blockchain.get_open_transactions(),self.blockchain.calculate_balances):
 					print("All transactions are valid and verified")
 
 			elif user_choice == '4':
-				verification = Verifications()
-				is_valid_blockchain = verification.validate_chain(blockchain)
+				# verification = Verifications()
+				is_valid_blockchain = Verifications.validate_chain(self.blockchain.get_chain())
 				if is_valid_blockchain is True:
 					print("Block chain is valid")
 				else:
 					print("Blockchain is invalid")
 					break
 			elif user_choice == '5':
-				is_block_mined = mine_block()
-				if is_block_mined == True:
-					open_transactions = []
+				is_block_mined = self.blockchain.mine_block()
+				if is_block_mined:
 					print("Block was mined successfully")
-					save_data()
+				
 			elif user_choice == '6':
-				print_participants()
+				self.blockchain.print_participants()
 			elif user_choice == '7':
-				for participant in participants:
-					print("Balance of %s is %s "%(participant,calculate_balances(participant)))
+				print(self.blockchain.calculate_balances())
 				
 			elif user_choice == 'q':
 				is_user_interaction = False
 				break
 			verification = Verifications()
-			if not verification.validate_chain(blockchain):
+			if not Verifications.validate_chain(self.blockchain.get_chain()):
 				print("Invalid block")
 				break
+
+node = Node()
+node.listen_for_input()
