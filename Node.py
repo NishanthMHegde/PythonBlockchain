@@ -1,10 +1,14 @@
 from Verifications import Verifications
 from Blockchain import Blockchain
 from uuid import uuid4
+from Wallet import Wallet
 class Node():
 	def __init__(self):
 		self.id = str(uuid4())
-		self.blockchain = Blockchain(self.id)
+		self.wallet = Wallet()
+		self.wallet.create_keys()
+		self.blockchain = Blockchain(self.wallet.public_key)
+		# self.blockchain = Blockchain(self.id)
 	
 	def get_last_transaction(self):
 		if len(self.blockchain.get_chain()) < 1:
@@ -37,6 +41,9 @@ class Node():
 			print("5. Mine block")
 			print("6. Print participants")
 			print("7. Calculate balance of each participant")
+			print("8.Create a Wallet")
+			print("9. Load Wallet")
+			print("10. Save Wallet")
 			print("q. Quit")
 
 			user_choice = self.get_user_choice()
@@ -77,6 +84,17 @@ class Node():
 				self.blockchain.print_participants()
 			elif user_choice == '7':
 				print(self.blockchain.calculate_balances())
+
+			elif user_choice == '8':
+				
+				self.wallet.create_keys()
+				self.blockchain = Blockchain(self.wallet.public_key)
+			elif user_choice == '9':
+				
+				self.wallet.load_keys()
+				self.blockchain = Blockchain(self.wallet.public_key)
+			elif user_choice == '10':
+				self.wallet.save_keys()
 				
 			elif user_choice == 'q':
 				is_user_interaction = False

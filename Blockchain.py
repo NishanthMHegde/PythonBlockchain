@@ -38,7 +38,7 @@ class Blockchain():
 	def calculate_balances(self):
 		participant = self.hosting_id
 		tx_sent = [[ transaction.amount for transaction in block.transactions if transaction.sender == participant ]for block in self.__chain]
-		tx_open_sent = [transaction.amount for transaction in self.__open_transactions if transaction['sender']==participant]
+		tx_open_sent = [transaction.amount for transaction in self.__open_transactions if transaction.sender==participant]
 		tx_sent.append(tx_open_sent)
 
 		amount_sent = functools.reduce(lambda tx_sum,tx_amt: tx_sum + sum(tx_amt) if len(tx_amt)>0 else tx_sum + 0,tx_sent,0)
@@ -142,7 +142,7 @@ class Blockchain():
 					updated_blockchain.append(updated_block)
 
 				for tx in open_transactions:
-					updated_transaction = Transactions(tx.sender,tx.recipient,tx.amount)
+					updated_transaction = Transactions(tx['sender'],tx['recipient'],tx['amount'])
 					updated_transactions.append(updated_transaction)
 
 				self.__chain = updated_blockchain
