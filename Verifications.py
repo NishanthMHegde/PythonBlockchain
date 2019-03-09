@@ -1,5 +1,6 @@
 import hashlib
 from HashUtils import HashUtils
+from Wallet import Wallet
 class Verifications():
 	@staticmethod
 	def valid_proof(transactions,previousBlockHash,proof):
@@ -8,16 +9,19 @@ class Verifications():
 		
 		return str_hash[0:2]=='00'
 	@staticmethod
-	def verify_transaction(transaction,calculate_balances):
-		sender_balance = calculate_balances()
-		if sender_balance >= transaction.amount:
-			return True
+	def verify_transaction(transaction,calculate_balances,check_funds = True):
+		if check_funds == True:
+			sender_balance = calculate_balances()
+			if sender_balance >= transaction.amount and Wallet.verify_transaction(transaction):
+				return True
+			else:
+				return False
 		else:
-			return False
+			return Wallet.verify_transaction(transaction)
 
 	@classmethod
 	def verify_transactions(cls,open_transactions,calculate_balances):
-		return all([cls.verify_transaction(txn,calculate_balances) for txn in open_transactions])
+		return all([cls.verify_transaction(txn,calculate_balances,check_funds = False) for txn in open_transactions])
 
 	@classmethod
 	def validate_chain(cls,blockchain):

@@ -49,7 +49,8 @@ class Node():
 			user_choice = self.get_user_choice()
 			if user_choice == '1':
 				recipient,amount = self.get_user_transaction()
-				if self.blockchain.add_transaction(recipient,amount=amount):
+				signature = self.wallet.sign(sender=self.wallet.public_key,recipient=recipient,amount=amount)
+				if self.blockchain.add_transaction(recipient,amount=amount,sender = self.wallet.public_key,signature = signature):
 					print("Transaction Successful")
 				else:
 					print("Transaction failed")
@@ -66,6 +67,8 @@ class Node():
 				# verification = Verifications()
 				if Verifications.verify_transactions(self.blockchain.get_open_transactions(),self.blockchain.calculate_balances):
 					print("All transactions are valid and verified")
+				else:
+					print("Transacton verification failed")
 
 			elif user_choice == '4':
 				# verification = Verifications()
@@ -79,11 +82,13 @@ class Node():
 				is_block_mined = self.blockchain.mine_block()
 				if is_block_mined:
 					print("Block was mined successfully")
+				else:
+					print("Block mining failed. GOt no wallet?")
 				
 			elif user_choice == '6':
 				self.blockchain.print_participants()
 			elif user_choice == '7':
-				print(self.blockchain.calculate_balances())
+				print("Balance of %s is %s"%(self.wallet.public_key,self.blockchain.calculate_balances()))
 
 			elif user_choice == '8':
 				
@@ -99,10 +104,10 @@ class Node():
 			elif user_choice == 'q':
 				is_user_interaction = False
 				break
-			verification = Verifications()
-			if not Verifications.validate_chain(self.blockchain.get_chain()):
-				print("Invalid block")
-				break
+			# verification = Verifications()
+			# if not Verifications.validate_chain(self.blockchain.get_chain()):
+			# 	print("Invalid block")
+			# 	break
 
 node = Node()
 node.listen_for_input()

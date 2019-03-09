@@ -7,7 +7,7 @@ from Block import Block
 from Transactions import Transactions
 from HashUtils import HashUtils
 from Verifications import Verifications
-
+from Wallet import Wallet
 
 class Blockchain():
 	def __init__(self,hosting_id):
@@ -36,7 +36,9 @@ class Blockchain():
 
 
 	def calculate_balances(self):
+		# print("Calculating balance in chain %s"%(self.__chain))
 		participant = self.hosting_id
+		# print("participant is %s"%(self.hosting_id))
 		tx_sent = [[ transaction.amount for transaction in block.transactions if transaction.sender == participant ]for block in self.__chain]
 		tx_open_sent = [transaction.amount for transaction in self.__open_transactions if transaction.sender==participant]
 		tx_sent.append(tx_open_sent)
@@ -54,9 +56,10 @@ class Blockchain():
 		# 	if len(amount) > 0:
 		# 		for amt in amount:
 		# 			amount_received = amount_received + amt
+		# print("Amount received is %s and amount sent is %s"%(amount_received,amount_sent))
 		return amount_received-amount_sent
 
-	def add_transaction(self,recipient,amount,sender=None):
+	def add_transaction(self,recipient,amount,signature,sender=None):
 		if sender is None:
 			sender = self.hosting_id
 	# transaction = {
@@ -65,12 +68,14 @@ class Blockchain():
 	# "amount" : amount
 	# }
 		# verification = Verifications()
-		transaction = Transactions(sender,recipient,amount)
+		transaction = Transactions(sender,recipient,amount,signature)
+		if not Verifications.verify_transaction(transaction,self.calculate_balances):
+			return False
 		if Verifications.verify_transaction(transaction,self.calculate_balances):
 			self.__open_transactions.append(transaction)
 			self.participants.add(sender)
 			self.participants.add(recipient)
-			
+			self.save_data()
 			return True
 		else:
 			return False
@@ -85,8 +90,11 @@ class Blockchain():
 		# 'recipient' : owner,
 		# 'amount' : MINING_REWARD
 		# }
-		reward_transaction = Transactions('MINER',self.hosting_id,self.MINING_REWARD)
+		reward_transaction = Transactions('MINER',self.hosting_id,self.MINING_REWARD,'')
 		copied_transactions = self.__open_transactions[:]
+		
+		if not Verifications.verify_transactions(copied_transactions,self.calculate_balances):
+			return False
 		copied_transactions.append(reward_transaction)
 		block = Block(index = len(self.__chain),previousBlockHash = block_hash,proof = proof,transactions = copied_transactions)
 		
@@ -111,7 +119,8 @@ class Blockchain():
 				# 	converted_blocks.append(converted_block.__dict__)
 				write_file.write(json.dumps(saveable_chain))
 				write_file.write('\n')
-				write_file.write(json.dumps(self.__open_transactions))
+				saveable_transactions = [txn.__dict__ for txn in self.__open_transactions]
+				write_file.write(json.dumps(saveable_transactions))
 		except IOError:
 			print("Error in saving data to the file")
 
@@ -137,12 +146,12 @@ class Blockchain():
 				updated_transactions = []
 
 				for block in blockchain:
-					updated_block = Block(index = block['index'],previousBlockHash = block['previousBlockHash'],transactions = [Transactions(txn['sender'],txn['recipient'],txn['amount']) for txn in block['transactions']],proof = block['proof'])
+					updated_block = Block(index = block['index'],previousBlockHash = block['previousBlockHash'],transactions = [Transactions(txn['sender'],txn['recipient'],txn['amount'],txn['signature']) for txn in block['transactions']],proof = block['proof'])
 					
 					updated_blockchain.append(updated_block)
 
 				for tx in open_transactions:
-					updated_transaction = Transactions(tx['sender'],tx['recipient'],tx['amount'])
+					updated_transaction = Transactions(tx['sender'],tx['recipient'],tx['amount'],tx['signature'])
 					updated_transactions.append(updated_transaction)
 
 				self.__chain = updated_blockchain
