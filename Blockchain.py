@@ -80,32 +80,34 @@ class Blockchain():
 		else:
 			return False
 	def mine_block(self):
-		
-		hu = HashUtils()
-		last_block = self.__chain[-1]
-		block_hash = hu.hash_block(last_block)
-		proof = self.proof_of_work()
-		# reward_transaction = {
-		# 'sender' : 'MINER',
-		# 'recipient' : owner,
-		# 'amount' : MINING_REWARD
-		# }
-		reward_transaction = Transactions('MINER',self.hosting_id,self.MINING_REWARD,'')
-		copied_transactions = self.__open_transactions[:]
-		
-		if not Verifications.verify_transactions(copied_transactions,self.calculate_balances):
-			return False
-		copied_transactions.append(reward_transaction)
-		block = Block(index = len(self.__chain),previousBlockHash = block_hash,proof = proof,transactions = copied_transactions)
-		
-		print("Adding new block %s"%(block.__dict__))
-		self.__chain.append(block)
-		
-		self.__open_transactions = []
-		self.save_data()
-		print("New length of blockchain %s"%(len(self.__chain)))
-		
-		return True
+		if self.hosting_id is not None:
+			hu = HashUtils()
+			last_block = self.__chain[-1]
+			block_hash = hu.hash_block(last_block)
+			proof = self.proof_of_work()
+			# reward_transaction = {
+			# 'sender' : 'MINER',
+			# 'recipient' : owner,
+			# 'amount' : MINING_REWARD
+			# }
+			reward_transaction = Transactions('MINER',self.hosting_id,self.MINING_REWARD,'')
+			copied_transactions = self.__open_transactions[:]
+			
+			if not Verifications.verify_transactions(copied_transactions,self.calculate_balances):
+				return None
+			copied_transactions.append(reward_transaction)
+			block = Block(index = len(self.__chain),previousBlockHash = block_hash,proof = proof,transactions = copied_transactions)
+			
+			print("Adding new block %s"%(block.__dict__))
+			self.__chain.append(block)
+			
+			self.__open_transactions = []
+			self.save_data()
+			print("New length of blockchain %s"%(len(self.__chain)))
+			
+			return block
+		else:
+			return None
 
 	def save_data(self):
 		

@@ -23,8 +23,11 @@ class Wallet():
                     write_file.write(self.public_key)
                     write_file.write("\n")
                     write_file.write(self.private_key)
+                return True
             except:
                 print("Saving keys failed")
+                return False
+
 
     def load_keys(self):
         try:
@@ -32,8 +35,10 @@ class Wallet():
                 key_data = read_file.readlines()
                 self.public_key = key_data[0][:-1]
                 self.private_key = key_data[1]
+            return True
         except:
             print("Loading keys failed")
+            return False
 
     def sign(self,sender,recipient,amount):
         payload = (str(sender) + str(recipient) + str(amount)).encode('utf8')
