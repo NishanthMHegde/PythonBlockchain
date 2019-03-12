@@ -37,6 +37,8 @@ class Blockchain():
 
 	def calculate_balances(self):
 		# print("Calculating balance in chain %s"%(self.__chain))
+		if self.hosting_id is None:
+			return None
 		participant = self.hosting_id
 		# print("participant is %s"%(self.hosting_id))
 		tx_sent = [[ transaction.amount for transaction in block.transactions if transaction.sender == participant ]for block in self.__chain]
@@ -60,6 +62,8 @@ class Blockchain():
 		return amount_received-amount_sent
 
 	def add_transaction(self,recipient,amount,signature,sender=None):
+		if self.hosting_id is None:
+			return False
 		if sender is None:
 			sender = self.hosting_id
 	# transaction = {

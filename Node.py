@@ -1,4 +1,4 @@
-from flask import Flask,jsonify 
+from flask import Flask,jsonify,request
 from flask_cors import CORS 
 from Blockchain import Blockchain
 from Wallet import Wallet
@@ -14,12 +14,14 @@ def create_keys():
 	wallet.create_keys()
 	save_status = wallet.save_keys()
 	if save_status is True:
-		message = {
-		"public_key": wallet.public_key,
-		"private_key" : wallet.private_key
-		}
+
 		global blockchain
 		blockchain = Blockchain(wallet.public_key)
+		message = {
+		"public_key": wallet.public_key,
+		"private_key" : wallet.private_key,
+		"Balance" : blockchain.calculate_balances()
+		}
 		return jsonify(message),200
 	else:
 		message = {
@@ -31,12 +33,14 @@ def create_keys():
 def load_keys():
 	load_status = wallet.load_keys()
 	if load_status == True:
-		message = {
-		"public_key": wallet.public_key,
-		"private_key" : wallet.private_key
-		}
+		
 		global blockchain
 		blockchain = Blockchain(wallet.public_key)
+		message = {
+		"public_key": wallet.public_key,
+		"private_key" : wallet.private_key,
+		"Balance" : blockchain.calculate_balances()
+		}
 		return jsonify(message),200
 	else:
 		message = {
@@ -65,7 +69,8 @@ def mine_block():
 		message = {
 		"block": dict_block,
 		"status" : "SUCCESS",
-		"wallet_setup" : wallet.public_key != None
+		"wallet_setup" : wallet.public_key != None,
+		"funds" : blockchain.calculate_balances()
 		}
 		return jsonify(message),200
 	else:
@@ -75,5 +80,63 @@ def mine_block():
 		}
 		return jsonify(message),500
 
+@app.route('/funds',methods = ['GET'])
+def get_balance():
+	balance = blockchain.calculate_balances()
+	if balance is None:
+		message = {
+		"Error" : "Funds could not be retrieved"
+		}
+		return jsonify(message),400
+	else:
+		message = {
+		"Owner" : wallet.public_key,
+		"Balance" : balance
+		}
+		return jsonify(message),200
+
+
+@app.route('/transactions',methods = ['POST'])
+
+def add_transaction():
+	values = request.get_json()
+	if values is None:
+		message = {
+		"Message" : "No transaction value was sent"
+		}
+		return jsonify(message),500
+	required_values =['recipient','amount']
+	is_values_present = all([ field in required_values for field in values])
+	if is_values_present is False:
+		message = {
+		"Message" : "All field values were not present"
+		}
+		return jsonify(message),500
+	signature = wallet.sign(wallet.public_key,values['recipient'],values['amount'])
+	transaction_status = blockchain.add_transaction(values['recipient'],values['amount'],signature,wallet.public_key)
+	if transaction_status is True:
+		message = {
+		"status" : "Successfully added transaction",
+		"transaction" : {
+		"sender" : wallet.public_key,
+		"recipient" : values['recipient'],
+		"amount" : values['amount'],
+		"signature" : signature
+		}
+		}
+		return jsonify(message),201
+	else:
+		message = {
+		"Error" : "Transaction failed"
+		}
+		return jsonify(message),500
+
+@app.route('/transactions',methods = ['GET'])
+def fetch_transactions():
+	transactions = blockchain.get_open_transactions()
+	message = {
+	"Transactions" : [txn.__dict__.copy() for txn in transactions]
+	}
+	return jsonify(message),200
 if __name__ == "__main__":
 	app.run(host = "0.0.0.0",port = 5000)
