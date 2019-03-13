@@ -138,5 +138,43 @@ def fetch_transactions():
 	"Transactions" : [txn.__dict__.copy() for txn in transactions]
 	}
 	return jsonify(message),200
+
+@app.route('/node',methods = ['POST'])
+def add_node():
+	values = request.get_json()
+	if values is None or 'node' not in values:
+		message = {
+		"Error" : "Node data was not found"
+		}
+		return jsonify(message),400
+	else:
+		blockchain.add_peer_node(values['node'])
+		message = {
+		"Message" : "Successfully added node",
+		"all_nodes" : list(blockchain.get_peer_nodes())
+		}
+		return jsonify(message),201
+@app.route('/node/<node_url>',methods = ['DELETE'])
+def remove_node(node_url):
+	if node_url is None:
+		message = {
+		"Error" : "Node to remove was not specified"
+		}
+		return jsonify(message),401
+	else:
+		blockchain.remove_peer_node(node_url)
+		message = {
+		"Message" : "Successfully removed peer node",
+		"all_nodes" : list(blockchain.get_peer_nodes())
+		}
+		return jsonify(message),201
+@app.route('/node',methods = ['GET'])
+def get_all_nodes():
+	peer_nodes = blockchain.get_peer_nodes()
+	message = {
+	'all_nodes' : list(peer_nodes)
+	}
+	return jsonify(message),201
+
 if __name__ == "__main__":
 	app.run(host = "0.0.0.0",port = 5000)

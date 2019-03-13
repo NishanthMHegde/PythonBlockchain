@@ -14,6 +14,7 @@ class Blockchain():
 		self.hosting_id = hosting_id
 		self.__chain = []
 		self.__open_transactions = []
+		self.__peer_nodes = set()
 		self.load_data()
 		self.participants = {self.hosting_id}
 		self.MINING_REWARD = 12
@@ -127,6 +128,9 @@ class Blockchain():
 				write_file.write('\n')
 				saveable_transactions = [txn.__dict__ for txn in self.__open_transactions]
 				write_file.write(json.dumps(saveable_transactions))
+				write_file.write("\n")
+				write_file.write(json.dumps(list(self.__peer_nodes)))
+				
 		except IOError:
 			print("Error in saving data to the file")
 
@@ -146,7 +150,8 @@ class Blockchain():
 				block_data = read_file.readlines()
 				
 				blockchain = json.loads(block_data[0][:-1])
-				open_transactions = json.loads(block_data[1])
+				open_transactions = json.loads(block_data[1][:-1])
+				self.__peer_nodes = set(json.loads(block_data[2]))
 
 				updated_blockchain = []
 				updated_transactions = []
@@ -171,7 +176,16 @@ class Blockchain():
 			print("Blockchain loaded")
 			
 	
+	def add_peer_node(self,node):
+		self.__peer_nodes.add(node)
+		self.save_data()
 
+	def remove_peer_node(self,node):
+		self.__peer_nodes.discard(node)
+		self.save_data()
+
+	def get_peer_nodes(self):
+		return list(self.__peer_nodes)[:]
 	
 
 
