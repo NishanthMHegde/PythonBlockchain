@@ -4,9 +4,10 @@ import binascii
 from Crypto.Hash import SHA256
 from Crypto.Signature import PKCS1_v1_5
 class Wallet():
-    def __init__(self):
+    def __init__(self,port_id):
         self.public_key = None
         self.private_key = None
+        self.port_id = port_id
 
     def create_keys(self):
         self.private_key,self.public_key = self.generate_keys()
@@ -18,20 +19,23 @@ class Wallet():
 
     def save_keys(self):
         if self.public_key is not None and self.private_key is not None:
+            print(self.public_key,self.private_key)
+            print("printint go %s"%("keys-%s.%s"%(self.port_id,'txt')))
             try:
-                with open("keys.txt",'w') as write_file:
+                with open("keys-%s.%s"%(self.port_id,'txt'),'w') as write_file:
+
                     write_file.write(self.public_key)
                     write_file.write("\n")
                     write_file.write(self.private_key)
                 return True
-            except:
-                print("Saving keys failed")
+            except Exception as e:
+                print("Saving keys failed with %s"%(e))
                 return False
 
 
     def load_keys(self):
         try:
-            with open("keys.txt",'r') as read_file:
+            with open("keys-%s.%s"%(self.port_id,'txt'),'r') as read_file:
                 key_data = read_file.readlines()
                 self.public_key = key_data[0][:-1]
                 self.private_key = key_data[1]

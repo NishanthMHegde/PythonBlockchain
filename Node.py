@@ -2,12 +2,10 @@ from flask import Flask,jsonify,request
 from flask_cors import CORS 
 from Blockchain import Blockchain
 from Wallet import Wallet
-
+from argparse import ArgumentParser
 app = Flask(__name__)
 CORS(app)
-wallet = Wallet()
 
-blockchain = Blockchain(wallet.public_key)
 
 @app.route('/wallet',methods = ['POST'])
 def create_keys():
@@ -16,11 +14,11 @@ def create_keys():
 	if save_status is True:
 
 		global blockchain
-		blockchain = Blockchain(wallet.public_key)
+		blockchain = Blockchain(wallet.public_key,port)
 		message = {
 		"public_key": wallet.public_key,
 		"private_key" : wallet.private_key,
-		"Balance" : blockchain.calculate_balances()
+		"Balance" : blockchain.calculate_balances(wallet.public_key)
 		}
 		return jsonify(message),200
 	else:
@@ -35,11 +33,11 @@ def load_keys():
 	if load_status == True:
 		
 		global blockchain
-		blockchain = Blockchain(wallet.public_key)
+		blockchain = Blockchain(wallet.public_key,port)
 		message = {
 		"public_key": wallet.public_key,
 		"private_key" : wallet.private_key,
-		"Balance" : blockchain.calculate_balances()
+		"Balance" : blockchain.calculate_balances(wallet.public_key)
 		}
 		return jsonify(message),200
 	else:
@@ -70,7 +68,7 @@ def mine_block():
 		"block": dict_block,
 		"status" : "SUCCESS",
 		"wallet_setup" : wallet.public_key != None,
-		"funds" : blockchain.calculate_balances()
+		"funds" : blockchain.calculate_balances(wallet.public_key)
 		}
 		return jsonify(message),200
 	else:
@@ -82,7 +80,7 @@ def mine_block():
 
 @app.route('/funds',methods = ['GET'])
 def get_balance():
-	balance = blockchain.calculate_balances()
+	balance = blockchain.calculate_balances(wallet.public_key)
 	if balance is None:
 		message = {
 		"Error" : "Funds could not be retrieved"
@@ -113,7 +111,7 @@ def add_transaction():
 		}
 		return jsonify(message),500
 	signature = wallet.sign(wallet.public_key,values['recipient'],values['amount'])
-	transaction_status = blockchain.add_transaction(values['recipient'],values['amount'],signature,wallet.public_key)
+	transaction_status = blockchain.add_transaction(values['recipient'],values['amount'],signature,wallet.public_key,is_recieving = False)
 	if transaction_status is True:
 		message = {
 		"status" : "Successfully added transaction",
@@ -176,5 +174,79 @@ def get_all_nodes():
 	}
 	return jsonify(message),201
 
+@app.route('/broadcast-transactions', methods = ['POST'])
+def broadcast_transactions():
+	values = request.get_json()
+
+	if values is None:
+		message = {
+		'Error' : "Broadcastd transaction was empty"
+		}
+		return jsonify(message),400
+	required_values = ['sender','recipient','amount','signature']
+	if not all([field in values for field in required_values]):
+		message = {
+		"Error" : "All fields were not present"
+		}
+		return jsonify(message),400
+
+	success = blockchain.add_transaction(sender = values['sender'], recipient = values['recipient'], signature = values['signature'], amount = values['amount'],is_recieving=True)
+	if success == True:
+		message = {
+		"Status" : "Successfully added transaction",
+		"Transaction" : {
+		"sender" : values['sender'],
+		"recipient" : values['recipient'],
+		"amount" : values['amount'],
+		"signature" : values['signature']
+		}
+		}
+		return jsonify(message),201
+	else:
+		message = {
+		'Error' : "Broadcastd transaction failed"
+		}
+		return jsonify(message),500
+@app.route('/broadcast-block',methods = ['POST'])
+def broadcast_block():
+	values = request.get_json()
+	if values is None:
+		message = {
+		"Error" : "No values were received"
+		}
+		return jsonify(message),500
+	if 'block' not in values:
+		message = {
+		"Error" : "Block was not received"
+		}
+		return jsonify(message),500
+	block = values['block']
+	if block['index'] == blockchain.get_chain()[-1].index + 1:
+		success = blockchain.add_block(block)
+		if success == True:
+			message = {
+			"Success" : "Block was broadcasted Successfully"
+			}
+			return jsonify(message),200
+		else:
+			message = {
+			"Error" : "Block was not broadcasted due to some reasons"
+			}
+			return jsonify(message),400
+	elif block['index'] > blockchain.get_chain()[-1].index:
+		pass
+	else:
+		message = {
+		"Error :": "Block recieved was from a shorted blockchain"
+		}
+		return jsonify(message),500
+
 if __name__ == "__main__":
-	app.run(host = "0.0.0.0",port = 5000)
+	parser = ArgumentParser()
+	parser.add_argument('-p','--port',type = int,default = 5000)
+	args = parser.parse_args()
+	port = args.port
+	print(port)
+	wallet = Wallet(port)
+	blockchain = Blockchain(wallet.public_key,port)
+	app.run(host = "0.0.0.0",port = port)
